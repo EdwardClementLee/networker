@@ -300,7 +300,7 @@
     nw.enableSettings = function() {
       nw.settingsGui = new dat.GUI();
 
-      nw.settingsGui.add(nw.settings, "charge", -2000, 0).onChange(nw.forceSettings);
+      nw.settingsGui.add(nw.settings, "charge", -15000, 0).onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "gravity", -1, 2).onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "friction", 0, 1).onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "linkDistance", 0, 600).onChange(nw.forceSettings);
