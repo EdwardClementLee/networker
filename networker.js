@@ -13,6 +13,7 @@
     this.linkStrength = 1.5;
     this.theta = 0.8;
 
+    this.explode = false;
     this.advanced = false;
     this.spread = 0; // -1 to 1
 
@@ -58,11 +59,17 @@
     // initialize networker vis
     nw.setup = function(element, size) {
       nw.size = (size) ? size : [500, 400];
+      // container
       nw.els.vis = (element) ? element : d3.select("body")
         .append("svg")
           .attr("class", "network")
           .attr("width", nw.size[0])
           .attr("height", nw.size[1]);
+      // layers
+      nw.els.edgeLayer = nw.els.vis.append("g")
+          .attr("class", "edgeLayer");
+      nw.els.nodeLayer = nw.els.vis.append("g")
+          .attr("class", "nodeLayer");
       nw.force = d3.layout.force()
         .nodes(nw.nodes)
         .links(nw.edges)
@@ -143,6 +150,11 @@
 
       console.log("Updating...");
 
+      var track = []
+      nw.nodes.forEach(function(n) { 
+        if (n.x && n.x == nw.size[0]/2) { track.push(n); }
+      });
+
       // start
       nw.force
         .nodes(nw.nodes)
@@ -151,14 +163,14 @@
       nw.forceSettings();
 
       // append/remove edges
-      nw.els.edges = nw.els.vis.selectAll(".edge").data(nw.edges, function(d) { return d[nw.key]; });
+      nw.els.edges = nw.els.edgeLayer.selectAll(".edge").data(nw.edges, function(d) { return d[nw.key]; });
       nw.els.edges.enter()
         .append("svg:path")
           .attr("class", "edge");
       nw.els.edges.exit().remove();
 
       // append/remove nodes
-      nw.els.nodes = nw.els.vis.selectAll(".node").data(nw.nodes, function(d) { return d[nw.key]; });
+      nw.els.nodes = nw.els.nodeLayer.selectAll(".node").data(nw.nodes, function(d) { return d[nw.key]; });
       nw.els.nodes.enter()
         .append("svg:g")
           .attr("class", "node")
@@ -170,12 +182,17 @@
       if (nw.style.node) nw.els.nodes.each(nw.style.node);
       if (nw.style.edge) nw.els.edges.each(nw.style.edge);
 
+      if (nw.settings.explode) {
+        nw.force.gravity(7);
+        setTimeout(nw.forceSettings, 75);
+      }
+
     }
 
     // set force settings programmatically
     nw.setForceSettings = function(settings) {
       for (var k in settings) {
-        if (nw.settings[k]) {
+        if (k in nw.settings) {
           nw.settings[k] = settings[k];
         }
       }
@@ -307,6 +324,7 @@
       nw.settingsGui.add(nw.settings, "linkStrength", 0, 5).onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "theta", 0, 1).onChange(nw.forceSettings);
 
+      nw.settingsGui.add(nw.settings, "explode");
       nw.settingsGui.add(nw.settings, "advanced").onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "spread", -1, 1).onChange(nw.forceSettings);
 
