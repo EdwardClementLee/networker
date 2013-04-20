@@ -13,6 +13,7 @@
     this.linkStrength = 1.5;
     this.theta = 0.8;
 
+    this.zooming = true;
     this.explode = false;
     this.advanced = false;
     this.spread = 0; // -1 to 1
@@ -27,6 +28,10 @@
         edges: [],
         stats: {},
         els: {},
+        canvas: {
+          translate: [0,0],
+          scale: 1
+        },
         draw: {},
         style: {},
         key: "id",
@@ -37,6 +42,14 @@
           edges: {}
         }
       };
+
+    // default filtering (none)
+    nw.filterNodes = function(nodes) {
+      return nodes;
+    }
+    nw.filterEdges = function(edges) {
+      return edges;
+    }
 
     // default styles
     nw.draw.node = function(d) {
@@ -64,7 +77,12 @@
         .append("svg")
           .attr("class", "network")
           .attr("width", nw.size[0])
-          .attr("height", nw.size[1]);
+          .attr("height", nw.size[1])
+          .attr("pointer-events", "all")
+          .call(d3.behavior.zoom().on("zoom", nw.moveCanvas))
+          .append("svg:g")
+            .attr("class", "canvas");
+
       // layers
       nw.els.edgeLayer = nw.els.vis.append("g")
           .attr("class", "edgeLayer");
@@ -145,32 +163,63 @@
       nw.edges = [];
     }
 
+    // select nodes and edges for update
+    nw.assembleData = function() {
+      
+      nw.nodes.forEach(function(d) { d.include = false; });
+      nw.edges.forEach(function(d) { d.include = false; });
+
+      // user filtering
+      var nodes = nw.filterNodes(nw.nodes.slice(0)),
+          edges = nw.filterEdges(nw.edges.slice(0));
+
+      // include filtered nodes
+      nodes.forEach(function(d) { d.include = true; });
+
+      // include filtered edges, if both nodes are also included
+      for (var i=edges.length-1; i>=0; i--) {
+        var d = edges[i];
+        if (d.source.include && d.target.include) {
+          // include
+          d.include = true;
+        }
+        else {
+          // remove
+          edges.splice(i, 1);
+        }
+      }
+
+      return { "nodes": nodes, "edges": edges };
+
+    };
+
     // update vis
     nw.update = function() {
 
       console.log("Updating...");
 
-      var track = []
-      nw.nodes.forEach(function(n) { 
-        if (n.x && n.x == nw.size[0]/2) { track.push(n); }
-      });
+      // var track = []
+      // nw.nodes.forEach(function(n) { 
+      //   if (n.x && n.x == nw.size[0]/2) { track.push(n); }
+      // });
+      var data = nw.assembleData();
 
       // start
       nw.force
-        .nodes(nw.nodes)
-        .links(nw.edges)
+        .nodes(data.nodes)
+        .links(data.edges)
         .start();
       nw.forceSettings();
 
       // append/remove edges
-      nw.els.edges = nw.els.edgeLayer.selectAll(".edge").data(nw.edges, function(d) { return d[nw.key]; });
+      nw.els.edges = nw.els.edgeLayer.selectAll(".edge").data(data.edges, function(d) { return d[nw.key]; });
       nw.els.edges.enter()
         .append("svg:path")
           .attr("class", "edge");
       nw.els.edges.exit().remove();
 
       // append/remove nodes
-      nw.els.nodes = nw.els.nodeLayer.selectAll(".node").data(nw.nodes, function(d) { return d[nw.key]; });
+      nw.els.nodes = nw.els.nodeLayer.selectAll(".node").data(data.nodes, function(d) { return d[nw.key]; });
       nw.els.nodes.enter()
         .append("svg:g")
           .attr("class", "node")
@@ -187,6 +236,15 @@
         setTimeout(nw.forceSettings, 75);
       }
 
+    }
+
+    // move canvas (zoom, pan)
+    nw.moveCanvas = function() {
+      if (nw.settings.zooming) {
+        nw.canvas.translate = d3.event.translate;
+        nw.canvas.scale = d3.event.scale;
+        nw.els.vis.attr("transform", "translate(" + nw.canvas.translate + ")" + " scale(" + nw.canvas.scale + ")" );
+      }
     }
 
     // set force settings programmatically
@@ -324,6 +382,7 @@
       nw.settingsGui.add(nw.settings, "linkStrength", 0, 5).onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "theta", 0, 1).onChange(nw.forceSettings);
 
+      nw.settingsGui.add(nw.settings, "zooming");
       nw.settingsGui.add(nw.settings, "explode");
       nw.settingsGui.add(nw.settings, "advanced").onChange(nw.forceSettings);
       nw.settingsGui.add(nw.settings, "spread", -1, 1).onChange(nw.forceSettings);
