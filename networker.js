@@ -301,7 +301,7 @@
     // tick
     nw.tick = function(e) {
 
-      if (nw.customTick) nw.customTick(nw.nodes, nw.edges);
+      if (nw.customTick) nw.customTick(nw.nodes, nw.edges, e);
 
       nw.els.edges
           .attr("d", function(d) { return nw.draw.edge([{ x: d.source.x, y: d.source.y }, { x: d.target.x, y: d.target.y }])});
